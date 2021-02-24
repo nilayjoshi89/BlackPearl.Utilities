@@ -20,6 +20,6 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\release\netstandard2.0\BlackPearl.Library.XmlDocument.dll" target="lib\net461" />
+    <file src="bin\release\netstandard2.0\Library.XmlDocument.dll" target="lib\net461" />
   </files>
 </package>
