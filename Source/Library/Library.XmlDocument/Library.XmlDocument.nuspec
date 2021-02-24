@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <metadata>
+    <id>BlackPearl.Library.XmlDocument</id>
+    <version>1.0.0.0</version>
+    <title>Library for reading/writing different types of XmlDocument (CsProject,NuSpec so far).</title>
+    <authors>nilayjoshi89@gmail.com</authors>
+    <owners>nilayjoshi89@gmail.com</owners>
+    <description>Library for reading/writing different types of XmlDocument (CsProject,NuSpec so far).</description>
+    <releaseNotes>Release notes</releaseNotes>
+    <copyright>Copyright 2021</copyright>
+    <tags>CSProj Library XmlDocument NuSpec</tags>
+    <dependencies>
+      <group>
+        <dependency id="nuget.versioning" version="5.8.1" />
+      </group>
+      <group targetFramework=".NETFramework4.6.1">
+        <dependency id="nuget.versioning" version="5.8.1" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="bin\release\BlackPearl.Library.XmlDocument.dll" target="lib\net461" />
+  </files>
+</package>
