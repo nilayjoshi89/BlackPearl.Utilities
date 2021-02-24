@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Parent>
+  <A>
+    <A1>
+      <Data name="1.1">
+        <Value>11</Value>
+      </Data>
+      <Data name="1.2"/>
+    </A1>
+    <A2>
+      <Data name="1.1"/>
+      <Data name="1.2"/>
+    </A2>
+  </A>
+  <C>
+    <C3>
+      <AnotherData value="1"/>
+      <AnotherData value="2"/>
+    </C3>
+  </C>
+</Parent>

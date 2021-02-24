@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="akavache.sqlite3" Version="7.1.1" />
+    <PackageReference Include="Prism.Core" Version="8.0.0.1909" />
+    <PackageReference Include="Quartz" Version="3.2.3" />
+    <!--<PackageReference Include="Unity.Abstractions" Version="5.11.6" />-->
+    <PackageReference Include="Unity.Abstractions">
+      <Version>5.11.6</Version>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Icon\Logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="CsProjectTestData.xml" />
+  </ItemGroup>
+
+</Project>
