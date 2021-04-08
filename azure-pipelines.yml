@@ -37,10 +37,3 @@ steps:
     command: 'pack'
     packagesToPack: '**/*.nuspec'
     versioningScheme: 'off'
-
-- task: NuGetCommand@2
-  inputs:
-    command: 'push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
-    nuGetFeedType: 'external'
-    publishFeedCredentials: 'NuGet_Publish'
