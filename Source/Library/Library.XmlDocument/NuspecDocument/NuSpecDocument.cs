@@ -151,7 +151,7 @@ namespace BlackPearl.Library.Xml
             foreach (string projRef in projectReferences.Select(p => p.ProjectPath))
             {
                 doc.CreateChildNodeWithAttribute(REFERENCE_NODE, refTarget461Group, out _,
-                    (FILES_NODE, Path.GetFileNameWithoutExtension(projRef) + DLL_EXT))
+                    (FILE_NODE, Path.GetFileNameWithoutExtension(projRef) + DLL_EXT))
                    .CreateChildNodeWithAttribute(REFERENCE_NODE, refGroup, out _,
                     (FILE_NODE, Path.GetFileNameWithoutExtension(projRef) + DLL_EXT));
             }
@@ -159,7 +159,7 @@ namespace BlackPearl.Library.Xml
             foreach (string cr in customReference)
             {
                 doc.CreateChildNodeWithAttribute(REFERENCE_NODE, refTarget461Group, out _,
-                    (FILES_NODE, Path.GetFileName(cr)))
+                    (FILE_NODE, Path.GetFileName(cr)))
                    .CreateChildNodeWithAttribute(REFERENCE_NODE, refGroup, out _,
                     (FILE_NODE, Path.GetFileName(cr)));
             }

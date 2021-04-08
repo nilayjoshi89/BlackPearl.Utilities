@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Xml;
+using System.Linq;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -178,19 +179,15 @@ namespace BlackPearl.Library.Xml.Test
         {
             string queryPath = NuSpecDocument.PACKAGE_NODE + "/" + NuSpecDocument.METADATA_NODE + "/"
                 + NuSpecDocument.REFERENCES_NODE + "/" + NuSpecDocument.GROUP_NODE + "/" + NuSpecDocument.REFERENCE_NODE + "[@file = \"{0}\"]";
-            string queryPath2 = NuSpecDocument.PACKAGE_NODE + "/" + NuSpecDocument.METADATA_NODE + "/"
-                + NuSpecDocument.REFERENCES_NODE + "/" + NuSpecDocument.GROUP_NODE + "/" + NuSpecDocument.REFERENCE_NODE + "[@files = \"{0}\"]";
 
             foreach (ICSProjectDocument r in projectADocument.Object.AllProjectReferences)
             {
-                Assert.IsTrue(doc.SelectNodes(string.Format(queryPath, Path.GetFileNameWithoutExtension(r.ProjectPath) + ".dll")).Count == 1);
-                Assert.IsTrue(doc.SelectNodes(string.Format(queryPath2, Path.GetFileNameWithoutExtension(r.ProjectPath) + ".dll")).Count == 1);
+                Assert.IsTrue(doc.SelectNodes(string.Format(queryPath, Path.GetFileNameWithoutExtension(r.ProjectPath) + ".dll")).Count == 2);
             }
 
             foreach (string r in metaData.CustomReference)
             {
-                Assert.IsTrue(doc.SelectNodes(string.Format(queryPath, r)).Count == 1);
-                Assert.IsTrue(doc.SelectNodes(string.Format(queryPath2, r)).Count == 1);
+                Assert.IsTrue(doc.SelectNodes(string.Format(queryPath, r)).Count == 2);
             }
         }
 
