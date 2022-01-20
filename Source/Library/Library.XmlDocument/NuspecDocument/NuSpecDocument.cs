@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -6,22 +7,24 @@ using System.Xml;
 
 using BlackPearl.Library.Extentions;
 
+using NuGet.Frameworks;
+
 namespace BlackPearl.Library.Xml
 {
     public class NuSpecDocument
     {
         #region Constants
         public const string PACKAGE_NODE = "package";
-        public const string INCLUDE_ATTRIBUTE = "Include";
-        public const string VERSION_NODE = "Version";
+        public const string INCLUDE_ATTRIBUTE = "include";
+        public const string VERSION_NODE = "version";
         public const string FILES_NODE = "files";
         public const string FILE_NODE = "file";
         public const string SRC_ATTRIBUTE = "src";
         public const string BIN_RELEASE = "bin\\release\\";
         public const string DLL_EXT = ".dll";
         public const string TARGET_ATTRIBUTE = "target";
-        public const string LIB_461 = "lib\\net461";
-        public const string REF_461 = "ref\\net461";
+        public const string LIB = "lib\\";
+        public const string REF = "ref\\";
         public const string CONTENT_FILES = "contentFiles";
         public const string CONTENT_ANY = "contentFiles\\any\\any\\";
         public const string BUILD_ACTION_ATTRIBUTE = "buildAction";
@@ -30,12 +33,10 @@ namespace BlackPearl.Library.Xml
         public const string NONE_VALUE = "None";
         public const string REFERENCE_NODE = "reference";
         public const string TARGET_FRAMEWORK_ATTRIBUTE = "targetFramework";
-        public const string NET461_VALUE = "net461";
         public const string REFERENCES_NODE = "references";
         public const string GROUP_NODE = "group";
         public const string DEPENDENCIES_NODE = "dependencies";
         public const string DEPENDENCY_NODE = "dependency";
-        public const string NETFRAMEWORK_461 = ".NETFramework4.6.1";
         public const string ID_ATTRIBUTE = "id";
         public const string METADATA_NODE = "metadata";
         public const string TITLE_NODE = "title";
@@ -45,162 +46,200 @@ namespace BlackPearl.Library.Xml
         public const string RELEASE_NOTES_NODE = "releaseNotes";
         public const string COPYRIGHT_NODE = "copyright";
         public const string TAGS_NODE = "tags";
+
+        private readonly IProjectDocument projectDocument;
+        private readonly PackageMetaData nuspecMetaData;
+        private XmlDocument document;
+        #endregion
+
+        #region Constructor
+        public NuSpecDocument(IProjectDocument projectDocument, PackageMetaData nuspecMetaData)
+        {
+            this.projectDocument = projectDocument;
+            this.nuspecMetaData = nuspecMetaData;
+        }
+        #endregion
+
+        #region Nodes
+        private XmlNode PackageNode => document?.SelectSingleNode(PACKAGE_NODE);
+        private XmlNode MetaNode => document?.SelectSingleNode(PACKAGE_NODE + "/" + METADATA_NODE);
         #endregion
 
         #region Methods
-        public Task<XmlDocument> GenerateForProject(ICSProjectDocument projectDocument, NuspecMetaData nuspecMetaData)
+        public Task<XmlDocument> Generate()
         {
             return Task.Run(() =>
             {
                 try
                 {
+                    if (document != null)
+                    {
+                        return document;
+                    }
+
                     if (!projectDocument.IsInitialized)
                     {
                         projectDocument.Initialize();
                     }
 
-                    IList<ICSProjectDocument> projectReferences = projectDocument.AllProjectReferences;
-                    IList<CSPackageReference> packageReferences = projectDocument.AllPackages;
-                    IList<string> contentFiles = projectDocument.ContentFiles;
+                    document = new XmlDocument();
+                    document.AppendChild(document.CreateXmlDeclaration("1.0", "utf-8", ""));
+                    document.AppendChild(PACKAGE_NODE);
 
-                    var doc = new XmlDocument();
-                    XmlDeclaration declaration = doc.CreateXmlDeclaration("1.0", "utf-8", "");
-                    doc.AppendChild(declaration);
-                    doc.CreateChildNode(PACKAGE_NODE, doc, out XmlElement packageNode);
-                    CreateMetaData(projectReferences, packageReferences, contentFiles, nuspecMetaData, doc);
-                    CreateFiles(projectReferences, contentFiles, nuspecMetaData, doc);
+                    CreateMetaBasic();
+                    CreateDependencies();
+                    CreateReferences();
+                    CreateContentFiles();
+                    CreateFiles();
 
-                    return doc;
+                    return document;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Debug.Print(ex.Message);
+                }
                 return null;
             });
         }
-        private void CreateMetaData(IList<ICSProjectDocument> projectReferences, IList<CSPackageReference> packageReferences, IList<string> contentFiles, NuspecMetaData metaData, XmlDocument doc)
+        private void CreateFiles()
         {
-            CreateMetaBasic(metaData, doc);
-            CreateDependencies(packageReferences, doc);
-            CreateReferences(projectReferences, metaData.CustomReference, doc);
-            CreateContentFiles(contentFiles, doc);
-        }
-        private void CreateFiles(IList<ICSProjectDocument> projectReferences, IList<string> contentFiles, NuspecMetaData metaData, XmlDocument doc)
-        {
-            doc.CreateChildNode(FILES_NODE, doc.SelectSingleNode(PACKAGE_NODE), out XmlElement files);
+            XmlElement files = PackageNode.CreateChildNode(FILES_NODE);
 
-            foreach (string projRef in projectReferences.Select(p => p.ProjectPath))
+            foreach (NuGetFramework fw in nuspecMetaData.TargetFramework)
             {
-                doc.CreateChildNodeWithAttribute(FILE_NODE, files, out _,
-                    (SRC_ATTRIBUTE, BIN_RELEASE + Path.GetFileNameWithoutExtension(projRef) + DLL_EXT),
-                    (TARGET_ATTRIBUTE, LIB_461))
+                foreach (string projRef in projectDocument.AllProjectReferences.Select(p => p.ProjectPath))
+                {
 
-                    .CreateChildNodeWithAttribute(FILE_NODE, files, out _,
-                    (SRC_ATTRIBUTE, BIN_RELEASE + Path.GetFileNameWithoutExtension(projRef) + DLL_EXT),
-                    (TARGET_ATTRIBUTE, REF_461));
+                    files.CreateChildNode(FILE_NODE,
+                        (SRC_ATTRIBUTE, BIN_RELEASE + Path.GetFileNameWithoutExtension(projRef) + DLL_EXT),
+                        (TARGET_ATTRIBUTE, LIB + fw.GetShortFolderName()));
+                    files.CreateChildNode(FILE_NODE,
+                        (SRC_ATTRIBUTE, BIN_RELEASE + Path.GetFileNameWithoutExtension(projRef) + DLL_EXT),
+                        (TARGET_ATTRIBUTE, REF + fw.GetShortFolderName()));
+                }
             }
 
-            foreach (string cl in metaData.CustomLibrary)
+            foreach (NuGetFramework fw in nuspecMetaData.TargetFramework)
             {
-                doc.CreateChildNodeWithAttribute(FILE_NODE, files, out _,
+                foreach (string cl in nuspecMetaData.CustomLibrary)
+                {
+
+                    files.CreateChildNode(FILE_NODE,
                     (SRC_ATTRIBUTE, BIN_RELEASE + Path.GetFileName(cl)),
-                    (TARGET_ATTRIBUTE, LIB_461));
+                    (TARGET_ATTRIBUTE, LIB + fw.GetShortFolderName()));
+                }
             }
 
-            foreach (string cr in metaData.CustomReference)
+            foreach (NuGetFramework fw in nuspecMetaData.TargetFramework)
             {
-                doc.CreateChildNodeWithAttribute(FILE_NODE, files, out _,
+                foreach (string cr in nuspecMetaData.CustomReference)
+                {
+                    files.CreateChildNode(FILE_NODE,
                     (SRC_ATTRIBUTE, BIN_RELEASE + Path.GetFileName(cr)),
-                    (TARGET_ATTRIBUTE, REF_461));
+                    (TARGET_ATTRIBUTE, REF + fw.GetShortFolderName()));
+                }
             }
 
-            foreach (string cf in contentFiles)
+            foreach (string cf in projectDocument.ContentFiles)
             {
-                doc.CreateChildNodeWithAttribute(FILE_NODE, files, out _,
+                files.CreateChildNode(FILE_NODE,
                     (SRC_ATTRIBUTE, BIN_RELEASE + cf),
                     (TARGET_ATTRIBUTE, CONTENT_ANY + cf));
             }
         }
-        private void CreateContentFiles(IList<string> contentFiles, XmlDocument doc)
+        private void CreateContentFiles()
         {
-            if (!contentFiles.Any())
+            if (!projectDocument.ContentFiles.Any())
             {
                 return;
             }
 
-            doc.CreateChildNode(CONTENT_FILES, doc.SelectSingleNode(PACKAGE_NODE + "/" + METADATA_NODE), out XmlElement contentFilesNode);
-            foreach (string cf in contentFiles)
+            XmlElement contentFilesNode = MetaNode.CreateChildNode(CONTENT_FILES);
+            foreach (string cf in projectDocument.ContentFiles)
             {
-                doc.CreateChildNodeWithAttribute(FILES_NODE, contentFilesNode, out _,
+                contentFilesNode.CreateChildNode(FILES_NODE,
                     (INCLUDE_ATTRIBUTE, ANY_PATH + cf.Replace('\\', '/')),
                     (BUILD_ACTION_ATTRIBUTE, NONE_VALUE),
                     (COPY_TO_OUTPUT_ATTRIBUTE, bool.TrueString.ToLower()));
             }
         }
-        private void CreateReferences(IList<ICSProjectDocument> projectReferences, List<string> customReference, XmlDocument doc)
+        private void CreateReferences()
         {
-            if (!projectReferences.Any() && !customReference.Any())
+            if (!projectDocument.AllProjectReferences.Any() && !nuspecMetaData.CustomReference.Any())
             {
                 return;
             }
 
-            XmlNode metaNode = doc.SelectSingleNode(PACKAGE_NODE + "/" + METADATA_NODE);
-            doc.CreateChildNode(REFERENCES_NODE, metaNode, out XmlElement references)
-                .CreateChildNode(GROUP_NODE, references, out XmlElement refGroup)
-                .CreateChildNodeWithAttribute(GROUP_NODE, references, out XmlElement refTarget461Group,
-                    (TARGET_FRAMEWORK_ATTRIBUTE, NET461_VALUE));
+            XmlElement references = MetaNode.CreateChildNode(REFERENCES_NODE);
+            XmlElement refGroup = references.CreateChildNode(GROUP_NODE);
 
-            foreach (string projRef in projectReferences.Select(p => p.ProjectPath))
+            CreateReferences(refGroup);
+
+            foreach (NuGetFramework fw in nuspecMetaData.TargetFramework)
             {
-                doc.CreateChildNodeWithAttribute(REFERENCE_NODE, refTarget461Group, out _,
-                    (FILE_NODE, Path.GetFileNameWithoutExtension(projRef) + DLL_EXT))
-                   .CreateChildNodeWithAttribute(REFERENCE_NODE, refGroup, out _,
+                XmlNode refFrameworkNode = references.CreateChildNode(GROUP_NODE,
+                    (TARGET_FRAMEWORK_ATTRIBUTE, fw.GetShortFolderName()));
+
+                CreateReferences(refFrameworkNode);
+            }
+        }
+
+        private void CreateReferences(XmlNode refGroupNode)
+        {
+            foreach (string projRef in projectDocument.AllProjectReferences.Select(p => p.ProjectPath))
+            {
+                refGroupNode.CreateChildNode(REFERENCE_NODE,
                     (FILE_NODE, Path.GetFileNameWithoutExtension(projRef) + DLL_EXT));
             }
 
-            foreach (string cr in customReference)
+            foreach (string cr in nuspecMetaData.CustomReference)
             {
-                doc.CreateChildNodeWithAttribute(REFERENCE_NODE, refTarget461Group, out _,
-                    (FILE_NODE, Path.GetFileName(cr)))
-                   .CreateChildNodeWithAttribute(REFERENCE_NODE, refGroup, out _,
+                refGroupNode.CreateChildNode(REFERENCE_NODE,
                     (FILE_NODE, Path.GetFileName(cr)));
             }
         }
-        private void CreateDependencies(IList<CSPackageReference> packageReferences, XmlDocument doc)
+
+        private void CreateDependencies()
         {
-            if (!packageReferences.Any())
+            if (!projectDocument.AllPackages.Any())
             {
                 return;
             }
 
-            XmlNode metaNode = doc.SelectSingleNode(PACKAGE_NODE + "/" + METADATA_NODE);
-            doc.CreateChildNode(DEPENDENCIES_NODE, metaNode, out XmlElement dependencies)
-                .CreateChildNode(GROUP_NODE, dependencies, out XmlElement group)
-                .CreateChildNodeWithAttribute(GROUP_NODE, dependencies, out XmlElement group461,
-                    (TARGET_FRAMEWORK_ATTRIBUTE, NETFRAMEWORK_461));
+            XmlElement dependencies = MetaNode.CreateChildNode(DEPENDENCIES_NODE);
+            XmlElement group = dependencies.CreateChildNode(GROUP_NODE);
 
-            foreach (CSPackageReference pRef in packageReferences)
+            CreateDependencyNodes(group);
+
+            foreach (NuGetFramework fw in nuspecMetaData.TargetFramework)
             {
-                doc.CreateChildNodeWithAttribute(DEPENDENCY_NODE, group, out _,
-                    (ID_ATTRIBUTE, pRef.Name),
-                    (VERSION_NODE.ToLower(), pRef.Version))
-                   .CreateChildNodeWithAttribute(DEPENDENCY_NODE, group461, out _,
-                    (ID_ATTRIBUTE, pRef.Name),
-                    (VERSION_NODE.ToLower(), pRef.Version));
+                XmlNode frameworkGroupNode = dependencies.CreateChildNode(GROUP_NODE, (TARGET_FRAMEWORK_ATTRIBUTE, fw.GetShortFolderName()));
+                CreateDependencyNodes(frameworkGroupNode);
             }
         }
-        private XmlElement CreateMetaBasic(NuspecMetaData metaData, XmlDocument doc)
+
+        private void CreateDependencyNodes(XmlNode groupNode)
         {
-            XmlNode packageNode = doc.SelectSingleNode(PACKAGE_NODE);
-            doc.CreateChildNode(METADATA_NODE, packageNode, out XmlElement metaNode)
-                .CreateChildNode(ID_ATTRIBUTE, metaData.Id, metaNode, out _)
-                .CreateChildNode(VERSION_NODE.ToLower(), metaData.Version, metaNode, out _)
-                .CreateChildNode(TITLE_NODE, metaData.Title, metaNode, out _)
-                .CreateChildNode(AUTHORS_NODE, metaData.Author, metaNode, out _)
-                .CreateChildNode(OWNERS_NODE, metaData.Owner, metaNode, out _)
-                .CreateChildNode(DESCRIPTION_NODE, metaData.Desciption, metaNode, out _)
-                .CreateChildNode(RELEASE_NOTES_NODE, metaData.ReleaseNotes, metaNode, out _)
-                .CreateChildNode(COPYRIGHT_NODE, metaData.Copyright, metaNode, out _)
-                .CreateChildNode(TAGS_NODE, metaData.Tags, metaNode, out _);
-            return metaNode;
+            foreach (PackageReference pRef in projectDocument.AllPackages)
+            {
+                groupNode.CreateChildNode(DEPENDENCY_NODE,
+                    (ID_ATTRIBUTE, pRef.Name),
+                    (VERSION_NODE, pRef.Version));
+            }
+        }
+
+        private void CreateMetaBasic()
+        {
+            PackageNode.CreateChildNode(METADATA_NODE)
+                .CreateChildNode(ID_ATTRIBUTE, nuspecMetaData.Id).ParentNode
+                .CreateChildNode(VERSION_NODE, nuspecMetaData.Version).ParentNode
+                .CreateChildNode(TITLE_NODE, nuspecMetaData.Title).ParentNode
+                .CreateChildNode(AUTHORS_NODE, nuspecMetaData.Author).ParentNode
+                .CreateChildNode(OWNERS_NODE, nuspecMetaData.Owner).ParentNode
+                .CreateChildNode(DESCRIPTION_NODE, nuspecMetaData.Desciption).ParentNode
+                .CreateChildNode(RELEASE_NOTES_NODE, nuspecMetaData.ReleaseNotes).ParentNode
+                .CreateChildNode(COPYRIGHT_NODE, nuspecMetaData.Copyright).ParentNode
+                .CreateChildNode(TAGS_NODE, nuspecMetaData.Tags);
         }
         #endregion
     }

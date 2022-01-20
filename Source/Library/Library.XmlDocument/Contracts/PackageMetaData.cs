@@ -1,10 +1,19 @@
 ﻿using System.Collections.Generic;
 
+using NuGet.Frameworks;
+
 namespace BlackPearl.Library.Xml
 {
 
-    public class NuspecMetaData
+    public class PackageMetaData
     {
+        public PackageMetaData()
+        {
+            CustomLibrary = new List<string>();
+            CustomReference = new List<string>();
+            TargetFramework = new List<NuGetFramework>() { FrameworkConstants.CommonFrameworks.Net461 };
+        }
+
         public string Id { get; set; }
         public string Version { get; set; }
         public string Title { get; set; }
@@ -16,5 +25,6 @@ namespace BlackPearl.Library.Xml
         public string Tags { get; set; }
         public List<string> CustomLibrary { get; set; }
         public List<string> CustomReference { get; set; }
+        public List<NuGetFramework> TargetFramework { get; set; }
     }
 }

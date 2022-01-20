@@ -8,17 +8,17 @@ namespace BlackPearl.Library.Xml.Test
     [TestClass]
     public class CsProjTest
     {
-        private static ICSProjectDocument doc, doc2;
+        private static IProjectDocument doc, doc2;
         private const string XmlDataPath = "Data\\CsProject2TestData.xml";
         private const string XmlDataPath2 = "Data\\CsProjectTestData.xml";
 
         [ClassInitialize]
         public static void Initialize(TestContext context)
         {
-            doc = new CSProjectDocument() { ProjectPath = XmlDataPath };
+            doc = new CSharpProjectDocument() { ProjectPath = XmlDataPath };
             doc.Initialize();
 
-            doc2 = new CSProjectDocument() { ProjectPath = XmlDataPath2 };
+            doc2 = new CSharpProjectDocument() { ProjectPath = XmlDataPath2 };
             doc2.Initialize();
         }
 
@@ -40,7 +40,7 @@ namespace BlackPearl.Library.Xml.Test
             //Arrange
 
             //Act
-            IEnumerable<CSPackageReference> packages = doc.Packages;
+            IEnumerable<PackageReference> packages = doc.Packages;
 
             //Assert
             Assert.IsTrue(packages.Count() == 4);
@@ -52,7 +52,7 @@ namespace BlackPearl.Library.Xml.Test
             //Arrange
 
             //Act
-            IEnumerable<CSPackageReference> packages = doc2.AllPackages;
+            IEnumerable<PackageReference> packages = doc2.AllPackages;
 
             //Assert
             Assert.IsTrue(packages.Count() == 2);
@@ -64,7 +64,7 @@ namespace BlackPearl.Library.Xml.Test
             //Arrange
 
             //Act
-            IEnumerable<CSPackageReference> packages = doc.AllPackages;
+            IEnumerable<PackageReference> packages = doc.AllPackages;
 
             //Assert
             Assert.IsTrue(packages.Count() == 5);

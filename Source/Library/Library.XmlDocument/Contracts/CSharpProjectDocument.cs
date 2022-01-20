@@ -10,7 +10,7 @@ using NuGet.Versioning;
 
 namespace BlackPearl.Library.Xml
 {
-    public class CSProjectDocument : ICSProjectDocument
+    public class CSharpProjectDocument : IProjectDocument
     {
         #region Constants
         private const string PROJECT_NODE = "Project";
@@ -28,30 +28,30 @@ namespace BlackPearl.Library.Xml
         #region Members
         private string csProjectPath;
         private readonly XmlDocument doc;
-        private readonly List<CSPackageReference> packages = new List<CSPackageReference>();
-        private readonly List<CSPackageReference> allPackages = new List<CSPackageReference>();
-        private readonly List<ICSProjectDocument> projectReferences = new List<ICSProjectDocument>();
-        private readonly List<ICSProjectDocument> allProjectReferences = new List<ICSProjectDocument>();
+        private readonly List<PackageReference> packages = new List<PackageReference>();
+        private readonly List<PackageReference> allPackages = new List<PackageReference>();
+        private readonly List<IProjectDocument> projectReferences = new List<IProjectDocument>();
+        private readonly List<IProjectDocument> allProjectReferences = new List<IProjectDocument>();
         private readonly List<string> contentFiles = new List<string>();
         #endregion
 
         #region Constructor
-        public CSProjectDocument()
+        public CSharpProjectDocument()
         {
             doc = new XmlDocument();
-            packages = new List<CSPackageReference>();
-            allPackages = new List<CSPackageReference>();
-            projectReferences = new List<ICSProjectDocument>();
+            packages = new List<PackageReference>();
+            allPackages = new List<PackageReference>();
+            projectReferences = new List<IProjectDocument>();
             contentFiles = new List<string>();
         }
         #endregion
 
         #region Properties
         public string ProjectPath { get => csProjectPath; set => csProjectPath = Path.GetFullPath(value); }
-        public IList<CSPackageReference> Packages => packages;
-        public IList<CSPackageReference> AllPackages => allPackages;
-        public IList<ICSProjectDocument> ProjectReferences => projectReferences;
-        public IList<ICSProjectDocument> AllProjectReferences => allProjectReferences;
+        public IList<PackageReference> Packages => packages;
+        public IList<PackageReference> AllPackages => allPackages;
+        public IList<IProjectDocument> ProjectReferences => projectReferences;
+        public IList<IProjectDocument> AllProjectReferences => allProjectReferences;
         public IList<string> ContentFiles => contentFiles;
         public bool IsInitialized { get; private set; }
         #endregion
@@ -78,11 +78,11 @@ namespace BlackPearl.Library.Xml
                                                    .Cast<XmlNode>()
                                                    .Select(n => Path.GetFullPath(Path.GetDirectoryName(csProjectPath) + "\\" + n.Value));
         }
-        private IEnumerable<CSPackageReference> GetPackageReferences()
+        private IEnumerable<PackageReference> GetPackageReferences()
         {
             return doc.SelectNodes($"{PROJECT_NODE}/{ITEMGROUP_NODE}/{PACKAGE_REFERENCE_NODE}")
                                                   .Cast<XmlNode>()
-                                                  .Select(n => new CSPackageReference
+                                                  .Select(n => new PackageReference
                                                   {
                                                       Name = n.SelectSingleNode($"@{INCLUDE_ATTRIBUTE}").Value.ToLower(),
                                                       Version = n.SelectSingleNode(VERSION_NODE)?.InnerText
@@ -102,7 +102,7 @@ namespace BlackPearl.Library.Xml
         private void LoadContentFile() => contentFiles.AddRange(GetContentFiles());
         private void LoadProjectRefernces()
         {
-            projectReferences.AddRange(GetProjectReferences().Select(p => new CSProjectDocument() { ProjectPath = p }));
+            projectReferences.AddRange(GetProjectReferences().Select(p => new CSharpProjectDocument() { ProjectPath = p }));
             allProjectReferences.AddRange(projectReferences);
 
             Parallel.ForEach(projectReferences, (p) =>
@@ -110,9 +110,9 @@ namespace BlackPearl.Library.Xml
                 p.Initialize();
             });
 
-            foreach (CSProjectDocument p in projectReferences)
+            foreach (CSharpProjectDocument p in projectReferences)
             {
-                foreach (CSProjectDocument r in p.AllProjectReferences)
+                foreach (CSharpProjectDocument r in p.AllProjectReferences)
                 {
                     if (!allProjectReferences.Any(pr => pr.ProjectPath == r.ProjectPath))
                     {
@@ -125,17 +125,17 @@ namespace BlackPearl.Library.Xml
         {
             packages.AddRange(GetPackageReferences());
 
-            var result = new Dictionary<string, CSPackageReference>();
-            foreach (CSPackageReference p in packages)
+            var result = new Dictionary<string, PackageReference>();
+            foreach (PackageReference p in packages)
             {
                 result.Add(p.Name, p);
             }
 
-            foreach (CSProjectDocument p in allProjectReferences)
+            foreach (CSharpProjectDocument p in allProjectReferences)
             {
-                IEnumerable<CSPackageReference> refs = p.GetPackageReferences();
+                IEnumerable<PackageReference> refs = p.GetPackageReferences();
 
-                foreach (CSPackageReference r in refs)
+                foreach (PackageReference r in refs)
                 {
                     if (!result.ContainsKey(r.Name))
                     {
@@ -143,7 +143,7 @@ namespace BlackPearl.Library.Xml
                         continue;
                     }
 
-                    CSPackageReference existingEntry = result[r.Name];
+                    PackageReference existingEntry = result[r.Name];
 
                     var newVersion = new NuGetVersion(r.Version);
                     var existingVersion = new NuGetVersion(existingEntry.Version);
