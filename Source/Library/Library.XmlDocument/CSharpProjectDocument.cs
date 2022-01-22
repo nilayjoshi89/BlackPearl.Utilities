@@ -54,6 +54,11 @@ namespace BlackPearl.Library.Xml
         public IList<IProjectDocument> AllProjectReferences => allProjectReferences;
         public IList<string> ContentFiles => contentFiles;
         public bool IsInitialized { get; private set; }
+        private string XPATH_PROJECT_REF => $"{PROJECT_NODE}/{ITEMGROUP_NODE}/{PROJECT_REFERENCE_NODE}/@{INCLUDE_ATTRIBUTE}";
+        private string XPATH_PACKAGE_REF => $"{PROJECT_NODE}/{ITEMGROUP_NODE}/{PACKAGE_REFERENCE_NODE}";
+        private string XPATH_CONTENT => $"{PROJECT_NODE}/{ITEMGROUP_NODE}/{NONE_VALUE}[{COPY_TO_OUT_DIR}]/@{INCLUDE_ATTRIBUTE}"
+                                                          + $"| {PROJECT_NODE}/{ITEMGROUP_NODE}/{CONTENT_VALUE}[{COPY_TO_OUT_DIR}]/Link"
+                                                          + $"| {PROJECT_NODE}/{ITEMGROUP_NODE}/{CONTENT_VALUE}[{COPY_TO_OUT_DIR}]/@{INCLUDE_ATTRIBUTE}";
         #endregion
 
         #region Methods
@@ -72,33 +77,23 @@ namespace BlackPearl.Library.Xml
 
             IsInitialized = true;
         }
-        private IEnumerable<string> GetProjectReferences()
-        {
-            return doc.SelectNodes($"{PROJECT_NODE}/{ITEMGROUP_NODE}/{PROJECT_REFERENCE_NODE}/@{INCLUDE_ATTRIBUTE}")
-                                                   .Cast<XmlNode>()
-                                                   .Select(n => Path.GetFullPath(Path.GetDirectoryName(csProjectPath) + "\\" + n.Value));
-        }
-        private IEnumerable<PackageReference> GetPackageReferences()
-        {
-            return doc.SelectNodes($"{PROJECT_NODE}/{ITEMGROUP_NODE}/{PACKAGE_REFERENCE_NODE}")
-                                                  .Cast<XmlNode>()
-                                                  .Select(n => new PackageReference
-                                                  {
-                                                      Name = n.SelectSingleNode($"@{INCLUDE_ATTRIBUTE}").Value.ToLower(),
-                                                      Version = n.SelectSingleNode(VERSION_NODE)?.InnerText
+        private IEnumerable<string> GetProjectReferences() =>
+                    doc.SelectNodes(XPATH_PROJECT_REF)
+                        .Cast<XmlNode>()
+                        .Select(n => Path.GetFullPath(Path.GetDirectoryName(csProjectPath) + "\\" + n.Value));
+        private IEnumerable<PackageReference> GetPackageReferences() =>
+                    doc.SelectNodes(XPATH_PACKAGE_REF)
+                        .Cast<XmlNode>()
+                        .Select(n => new PackageReference
+                        {
+                            Name = n.SelectSingleNode($"@{INCLUDE_ATTRIBUTE}").Value.ToLower(),
+                            Version = n.SelectSingleNode(VERSION_NODE)?.InnerText
                                                                 ?? n.SelectSingleNode($"@{VERSION_NODE}").Value
-                                                  });
-
-        }
-        private IEnumerable<string> GetContentFiles()
-        {
-            return doc.SelectNodes($"{PROJECT_NODE}/{ITEMGROUP_NODE}/{NONE_VALUE}[{COPY_TO_OUT_DIR}]/@{INCLUDE_ATTRIBUTE}"
-                                                          + $"| {PROJECT_NODE}/{ITEMGROUP_NODE}/{CONTENT_VALUE}[{COPY_TO_OUT_DIR}]/Link"
-                                                          + $"| {PROJECT_NODE}/{ITEMGROUP_NODE}/{CONTENT_VALUE}[{COPY_TO_OUT_DIR}]/@{INCLUDE_ATTRIBUTE}")
-                                                  .Cast<XmlNode>()
-                                                  .Select(n => n.InnerText ?? n.Value);
-
-        }
+                        });
+        private IEnumerable<string> GetContentFiles() =>
+                    doc.SelectNodes(XPATH_CONTENT)
+                        .Cast<XmlNode>()
+                        .Select(n => n.InnerText ?? n.Value);
         private void LoadContentFile() => contentFiles.AddRange(GetContentFiles());
         private void LoadProjectRefernces()
         {

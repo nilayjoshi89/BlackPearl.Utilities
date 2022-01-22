@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -63,6 +63,8 @@ namespace BlackPearl.Library.Xml
         #region Nodes
         private XmlNode PackageNode => document?.SelectSingleNode(PACKAGE_NODE);
         private XmlNode MetaNode => document?.SelectSingleNode(PACKAGE_NODE + "/" + METADATA_NODE);
+        private ValueTuple<string, string> BuildAttribute => (BUILD_ACTION_ATTRIBUTE, NONE_VALUE);
+        private ValueTuple<string, string> CopyAttribute => (COPY_TO_OUTPUT_ATTRIBUTE, bool.TrueString.ToLower());
         #endregion
 
         #region Methods
@@ -91,54 +93,32 @@ namespace BlackPearl.Library.Xml
                     CreateReferences();
                     CreateContentFiles();
                     CreateFiles();
-
-                    return document;
                 }
-                catch (Exception ex)
-                {
-                    Debug.Print(ex.Message);
-                }
-                return null;
+                catch { }
+                return document;
             });
         }
         private void CreateFiles()
         {
             XmlElement files = PackageNode.CreateChildNode(FILES_NODE);
 
-            foreach (NuGetFramework fw in nuspecMetaData.TargetFramework)
-            {
-                foreach (string projRef in projectDocument.AllProjectReferences.Select(p => p.ProjectPath))
-                {
+            IEnumerable<string> refNodes = projectDocument.AllProjectReferences.Select(p => Path.GetFileNameWithoutExtension(p.ProjectPath) + DLL_EXT)
+                                            .Concat(nuspecMetaData.CustomReference.Select(cr => Path.GetFileName(cr)));
+            IEnumerable<string> libNodes = projectDocument.AllProjectReferences.Select(p => Path.GetFileNameWithoutExtension(p.ProjectPath) + DLL_EXT)
+                                            .Concat(nuspecMetaData.CustomLibrary.Select(cl => Path.GetFileName(cl)));
+            nuspecMetaData.TargetFramework
+                .SelectMany(fw =>
+                    refNodes.Select(rn => files.CreateChildNode(FILE_NODE,
+                                                                (SRC_ATTRIBUTE, BIN_RELEASE + rn),
+                                                                (TARGET_ATTRIBUTE, REF + fw.GetShortFolderName()))))
+                .ToArray();
 
-                    files.CreateChildNode(FILE_NODE,
-                        (SRC_ATTRIBUTE, BIN_RELEASE + Path.GetFileNameWithoutExtension(projRef) + DLL_EXT),
-                        (TARGET_ATTRIBUTE, LIB + fw.GetShortFolderName()));
-                    files.CreateChildNode(FILE_NODE,
-                        (SRC_ATTRIBUTE, BIN_RELEASE + Path.GetFileNameWithoutExtension(projRef) + DLL_EXT),
-                        (TARGET_ATTRIBUTE, REF + fw.GetShortFolderName()));
-                }
-            }
-
-            foreach (NuGetFramework fw in nuspecMetaData.TargetFramework)
-            {
-                foreach (string cl in nuspecMetaData.CustomLibrary)
-                {
-
-                    files.CreateChildNode(FILE_NODE,
-                    (SRC_ATTRIBUTE, BIN_RELEASE + Path.GetFileName(cl)),
-                    (TARGET_ATTRIBUTE, LIB + fw.GetShortFolderName()));
-                }
-            }
-
-            foreach (NuGetFramework fw in nuspecMetaData.TargetFramework)
-            {
-                foreach (string cr in nuspecMetaData.CustomReference)
-                {
-                    files.CreateChildNode(FILE_NODE,
-                    (SRC_ATTRIBUTE, BIN_RELEASE + Path.GetFileName(cr)),
-                    (TARGET_ATTRIBUTE, REF + fw.GetShortFolderName()));
-                }
-            }
+            nuspecMetaData.TargetFramework
+                .SelectMany(fw =>
+                    libNodes.Select(ln => files.CreateChildNode(FILE_NODE,
+                                                                (SRC_ATTRIBUTE, BIN_RELEASE + ln),
+                                                                (TARGET_ATTRIBUTE, LIB + fw.GetShortFolderName()))))
+                .ToArray();
 
             foreach (string cf in projectDocument.ContentFiles)
             {
@@ -159,8 +139,8 @@ namespace BlackPearl.Library.Xml
             {
                 contentFilesNode.CreateChildNode(FILES_NODE,
                     (INCLUDE_ATTRIBUTE, ANY_PATH + cf.Replace('\\', '/')),
-                    (BUILD_ACTION_ATTRIBUTE, NONE_VALUE),
-                    (COPY_TO_OUTPUT_ATTRIBUTE, bool.TrueString.ToLower()));
+                    BuildAttribute,
+                    CopyAttribute);
             }
         }
         private void CreateReferences()
@@ -186,16 +166,14 @@ namespace BlackPearl.Library.Xml
 
         private void CreateReferences(XmlNode refGroupNode)
         {
-            foreach (string projRef in projectDocument.AllProjectReferences.Select(p => p.ProjectPath))
+            IEnumerable<string> allProjRef = projectDocument.AllProjectReferences.Select(p => Path.GetFileNameWithoutExtension(p.ProjectPath) + DLL_EXT);
+            IEnumerable<string> custRef = nuspecMetaData.CustomReference.Select(cr => Path.GetFileName(cr));
+            IEnumerable<string> allRef = allProjRef.Concat(custRef);
+
+            foreach (string projRef in allRef)
             {
                 refGroupNode.CreateChildNode(REFERENCE_NODE,
                     (FILE_NODE, Path.GetFileNameWithoutExtension(projRef) + DLL_EXT));
-            }
-
-            foreach (string cr in nuspecMetaData.CustomReference)
-            {
-                refGroupNode.CreateChildNode(REFERENCE_NODE,
-                    (FILE_NODE, Path.GetFileName(cr)));
             }
         }
 
