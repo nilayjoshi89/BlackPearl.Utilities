@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>BlackPearl.Library.XmlDocument</id>
-    <version>1.0.0.1</version>
+    <version>1.0.0.2</version>
     <title>Library for reading/writing different types of XmlDocument (CsProject,NuSpec so far).</title>
     <authors>nilayjoshi89@gmail.com</authors>
     <owners>nilayjoshi89@gmail.com</owners>
